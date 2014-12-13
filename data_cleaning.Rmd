@@ -1,0 +1,145 @@
+---
+title: "Practical Machine Learning - Course Project"
+subtitle: "Getting and Cleaning Data"
+author: "Attila Doroszlai"
+date: "13 Dec 2014"
+output: html_document
+---
+
+```{r,echo=FALSE}
+url <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+clean_file <- 'clean.RData'
+```
+
+## Introduction
+
+The aim of this document is to get the raw dataset, explore its basic structure (names and types of variables), and produce a clean dataset for further analysis and modelling.  The clean dataset is saved in the *`r clean_file`* file.
+
+The dataset originally comes from _Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. [Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201). Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013._  More information on it is available at [ Human Activity Recognition - Weight Lifting Exercises Dataset](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises).
+
+This document works with the [training subset](`r url`) of the data.
+
+## Getting the Data
+
+Download the training data file and store it locally to avoid having to download it again on subsequent runs.
+
+```{r}
+source('functions.R')
+file <- download_if_necessary(url)
+```
+
+Load the raw data as is.
+
+```{r}
+data <- read.csv(file, stringsAsFactors = F)
+```
+
+## Basic Exploration
+
+The raw dataset contains 19622 observations for 160 variables.
+
+```{r}
+dim(data)
+row_count <- nrow(data)
+colnames(data)
+```
+
+*X* is just the row number.
+
+```{r}
+length(unique(data$X)) == length(data$X)
+```
+
+*user_name* contains the name of each of the 6 participants.
+
+```{r}
+data$user_name <- as.factor(data$user_name)
+summary(data$user_name)
+```
+
+*raw_timestamp_part_1* and *raw_timestamp_part_2* are second- and subsecond-level timestamps of the observations.  *cvtd_timestamp* is the second-level timestamp converted to a human-readable format.  We can ignore these variables, since we do not plan to perform time-series analysis.
+
+*classe* is the outcome variable.  Each participant was asked to perform the exercise in 5 different ways.  _A_ is the "correct" performance, the others (_B_ through _E_) are various incorrect ways.
+
+```{r}
+data$classe <- as.factor(data$classe)
+summary(data$classe)
+```
+
+Measurements were recorded in time windows.  *new_window* indicates whether the observation is the start of a new time window.
+
+```{r}
+data$new_window <- as.factor(data$new_window)
+window_count <- sum(data$new_window == 'yes')
+```
+
+152 variables are 38 types of measurement for sensors located in 4 different parts of the body: _arm_, _belt_, _dumbbell_ and _forearm_.
+
+```{r}
+sensors <- c('arm', 'belt', 'dumbbell', 'forearm')
+sensor_vars <- sapply(sensors, function(s) {
+  cols <- grep(paste0("_", s), colnames(data), value = T)
+  cols[order(cols)]
+})
+sensor_vars
+```
+
+## Data Cleaning
+
+Convert invalid values (empty string and "#DIV/0!") to *NA*.
+
+```{r}
+for (var in sensor_vars) {
+  col <- data[,var]
+  data[!is.na(col) & (col == '' | col == '#DIV/0!'), var] <- NA
+  data[,var] <- as.numeric(data[,var])
+}
+```
+
+Measurement variables can be categorized into 2 distinct groups: raw measurements and summary values.  Raw measurements are present in all or most of the observations, while summary values are missing from at least `r row_count - window_count` of the `r row_count` rows.
+
+```{r}
+var_type <- sapply(sensor_vars, function(var) {
+  col <- data[,var]
+  ifelse(sum(is.na(col)) >= row_count - window_count, 'summary', 'raw')
+})
+var_by_type <- list(
+  summary = names(var_type[var_type == 'summary']),
+  raw = names(var_type[var_type == 'raw'])
+)
+```
+
+Raw measurement variables:
+
+```{r}
+var_by_type$raw
+```
+
+Measurement summary variables:
+
+```{r}
+var_by_type$summary
+```
+
+We need to decide between using raw or summary variables for building our model.  A quick glance at the test dataset shows that test records only have raw measurements.  If we choose the summary variables, we will not be able to predict anything.  Therefore we need to go with the raw measurement variables.
+
+```{r}
+data <- subset(data, select = c('user_name', 'classe', var_by_type$raw))
+dim(data)
+colnames(data)
+```
+
+Further we check for any variables that are uniform across the dataset, since they are useless for prediction.  We find that there are none, ie. all of them are usable.
+
+```{r}
+library(caret)
+nzv <- nearZeroVar(data, saveMetrics = T)
+which(nzv$nzv == T)
+```
+
+## Save Cleaned Dataset
+
+```{r}
+save(data, file = clean_file)
+summary(data)
+```

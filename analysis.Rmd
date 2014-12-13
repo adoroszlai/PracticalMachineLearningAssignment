@@ -1,0 +1,40 @@
+---
+title: "Practical Machine Learning Course Project"
+subtitle: "Analysis"
+author: "Attila Doroszlai"
+date: "13 Dec 2014"
+output: html_document
+---
+
+```{r partition}
+clean_file <- 'clean.RData'
+load(clean_file)
+library(caret)
+
+inTrain <- createDataPartition(y = data$classe, p = 0.5, list = F)
+training <- data[inTrain,]
+test <- data[-inTrain,]
+trainCtrl <- trainControl(method = 'repeatedcv', number = 10, repeats = 10)
+```
+
+```{r boosting}
+library(gbm)
+library(plyr)
+set.seed(123)
+boost.fit <- train(classe ~ ., data = training, method = 'gbm', verbose = F, trainControl = trainCtrl)
+print(boost.fit)
+```
+
+```{r random_forest}
+library(randomForest)
+set.seed(123)
+rf.fit <- train(classe ~ ., data = training, method = 'rf', verbose = F, trainControl = trainCtrl)
+print(rf.fit)
+```
+
+```{r evaluate_models}
+boost.pred <- predict(boost.fit, newdata = test)
+confusionMatrix(boost.pred, test$classe)
+rf.pred <- predict(rf.fit, newdata = test)
+confusionMatrix(rf.pred, test$classe)
+```

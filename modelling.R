@@ -1,6 +1,7 @@
-clean_file <- 'clean.RData'
-model_file <- 'rf.RData'
-testdata_file <- 'split.RData'
+# This script partitions the cleaned data into training and testing subsets,
+# and uses the training subset to fit Random Forest model via the caret package.
+
+source('functions.R')
 
 library(caret)
 library(randomForest)

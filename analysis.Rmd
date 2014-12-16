@@ -7,13 +7,12 @@ output: html_document
 ---
 
 ```{r}
-testdata_file <- 'split.RData'
-model_file <- 'rf.RData'
-
 library(ggplot2)
 library(lattice)
 library(caret)
 library(randomForest)
+
+source('functions.R')
 
 load(testdata_file)
 load(model_file)

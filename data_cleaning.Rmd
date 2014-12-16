@@ -7,8 +7,7 @@ output: html_document
 ---
 
 ```{r,echo=FALSE}
-url <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
-clean_file <- 'clean.RData'
+source('functions.R')
 ```
 
 ## Introduction
@@ -17,15 +16,14 @@ The aim of this document is to get the raw dataset, explore its basic structure 
 
 The dataset originally comes from _Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. [Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201). Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013._  More information on it is available at [ Human Activity Recognition - Weight Lifting Exercises Dataset](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises).
 
-This document works with the [training subset](`r url`) of the data.
+This document works with the [training subset](`r train_url`) of the data.
 
 ## Getting the Data
 
 Download the training data file and store it locally to avoid having to download it again on subsequent runs.
 
 ```{r}
-source('functions.R')
-file <- download_if_necessary(url)
+file <- download_if_necessary(train_url)
 ```
 
 Load the raw data as is.

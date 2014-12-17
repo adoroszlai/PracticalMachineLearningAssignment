@@ -2,27 +2,87 @@
 title: "Practical Machine Learning Course Project"
 subtitle: "Analysis"
 author: "Attila Doroszlai"
-date: "13 Dec 2014"
+date: "17 Dec 2014"
 output: html_document
 ---
 
-```{r}
+```{r,echo=FALSE}
 library(ggplot2)
 library(lattice)
-library(caret)
-library(randomForest)
+suppressPackageStartupMessages(require(caret, quietly=T))
+suppressPackageStartupMessages(require(randomForest, quietly=T))
 
 source('functions.R')
 
-load(testdata_file)
+load(clean_file)
 load(model_file)
+load(testdata_file)
+```
 
+## Introduction
+
+The goal of this project was to create and evaluate a classification model for the [Human Activity Recognition - Weight Lifting Exercises Dataset](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises).
+
+## Dataset
+
+The dataset originally comes from _Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. [Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201). Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013._
+
+In the experiment _"six ... participants were asked to perform ... 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A),"_ and in four different incorrect ways (Classes B-E).
+
+This project works with the [training subset](`r train_url`) of the data created by the course instructors.
+
+The dataset contains `r nrow(data)` observations for 160 variables.  Most of the variables are raw and summarized measurements from accelerometers and other sensors placed in four different parts of the participants' body.  The rest are identifiers, timestamps, and finally _classe_ is the response variable.
+
+### Data Cleaning
+
+The dataset needed to be cleaned prior to modelling.  The cleaning process is documented in (and was performed by) `data_cleaning.Rmd` ([compiled output](data_cleaning.html)).
+
+All original rows were retained in the clean dataset, but only `r ncol(data)` variables were kept.
+
+## Modelling
+
+Modelling steps described below were performed by the `modelling.R` script.
+
+The dataset was further split randomly into training and testing subsets.  Only `r nrow(training)` observations were used for training.  The other `r nrow(test)` observations were later used to estimate out-of-sample accuracy.
+
+### Training
+
+The model of choice for this project was **random forest**, using _classe_ as the response and all `r ncol(data)-1` other variables as predictors.
+
+Training data was preprocessed to be centered ($\mu = 0$) and scaled ($\sigma = 1$).
+
+Several models were fitted varying the tuning parameter using the _caret_ package.  Random forest has a single tuning parameter *m*, the number of randomly selected predictors considered at each split of the tree, and models were built for values $m \in [`r min(rf.fit$results$mtry)`, `r max(rf.fit$results$mtry)`]$.
+
+The training process used 10-fold cross-validation (implemented by _caret_) to evaluate the models.  See the appendix for the full fitted model.
+
+#### Cross-Validation Accuracy vs. Number of Randomly Selected Predictors
+
+```{r,echo=FALSE}
 trellis.par.set(caretTheme())
-
-print(rf.fit)
 ggplot(rf.fit) + theme_bw()
+```
 
-# evaluate on test dataset
+### Final Model
+
+The random forest model with $m = `r rf.fit$bestTune$mtry`$ was selected as the final model based on **cross-validation accuracy**: `r max(rf.fit$results$Accuracy)`.
+
+### Testing
+
+```{r,echo=FALSE}
 pred <- predict(rf.fit, newdata = test)
-confusionMatrix(pred, test$classe)
+cm <- confusionMatrix(pred, test$classe)
+```
+
+**Out-of-sample accuracy**: `r cm$overall['Accuracy']` was estimated using the `r nrow(test)` observations not used in the training process.
+
+```{r,echo=FALSE}
+cm
+```
+
+## Appendix
+
+### Full Random Forest model
+
+```{r,echo=FALSE}
+print(rf.fit)
 ```
